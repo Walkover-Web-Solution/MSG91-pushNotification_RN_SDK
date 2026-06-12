@@ -13,15 +13,17 @@
     },
     "repository": {
       "type": "git",
-      "url": "git+https://github.com/Walkover-Web-Solution/HelloSDK.git"
+      "url": "git+https://github.com/Walkover-Web-Solution/MSG91-pushNotification_RN_SDK.git"
     },
     "keywords": [
-      "msg91",
-      "push notification",
-      "React Native"
+      "MSG91",
+      "Push Notification",
+      "React Native",
+      "FCM Notifications",
+      "In App Notifications"
     ],
     "bugs": {
-      "url": "https://github.com/Walkover-Web-Solution/HelloSDK/issues"
+      "url": "https://github.com/Walkover-Web-Solution/MSG91-pushNotification_RN_SDK/issues"
     },
-    "homepage": "https://github.com/Walkover-Web-Solution/HelloSDK#readme"
+    "homepage": "https://github.com/Walkover-Web-Solution/MSG91-pushNotification_RN_SDK#readme"
   }
