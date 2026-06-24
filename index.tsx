@@ -1,4 +1,4 @@
-import { BackHandler, Linking, StyleSheet, View } from 'react-native';
+import { BackHandler, Linking, Modal, StyleSheet, View, Platform } from 'react-native';
 import React, { createRef, useCallback, useEffect, useState } from 'react';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { EventType, webviewSource, popupHtml, LOG } from './scripts';
@@ -7,6 +7,7 @@ type Props = {
     helloConfig: { [key in string]: any }
     projectId: string
 }
+
 type MSG91PushNotificationSDKProps = React.FC<Props> & {
     registerFCM: (fcmToken: string) => void
     handleFCMNotification: (htmlContentUrl: string) => void
@@ -44,14 +45,8 @@ const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, 
 
     const handleHtmlData = (htmlContent: string | undefined | null) => {
         if (!!htmlContent) {
-            setPopupWebviewState(prev => ({ ...prev, htmlContent: htmlContent, mounted: true }));
-            popupWebviewRef?.current?.reload()
-            const timeout = setTimeout(() => {
-                setPopupWebviewState(prev => ({ ...prev, visible: true }));
-                clearTimeout(timeout);
-            }, 1000);
+            setPopupWebviewState({ htmlContent, mounted: true, visible: true });
         }
-
     }
 
     const handleEvents = useCallback((data: any) => {
@@ -67,11 +62,9 @@ const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, 
                 LOG('Reloading Webview from event');
                 setReloadWebviewWithKey(prev => prev + 1)
                 break;
-            // Handle FCM Notification event
             case EventType.HTML_CONTENT:
                 handleHtmlData(data?.htmlContent)
                 break;
-            // Handle socket Push Notification event
             case EventType.PUSH_NOTIFICATION:
                 handleHtmlData(data?.data?.content)
                 break;
@@ -96,7 +89,9 @@ const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, 
                     ...prevHelloConfigState,
                     pushConfig: {
                         project_id: projectId,
-                        access_token: fcm
+                        access_token: fcm,
+                        ...(Platform.OS === 'ios' && { device_type: 'ios' })
+
                    }
                 }
             })
@@ -129,46 +124,57 @@ const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, 
 
     return (
         <>
-            <View style={styles.socketWebviewStyle}>
+            <View style={styles.socketWebviewStyle} pointerEvents="none" collapsable={false}>
                 <WebView
                     key={reloadWebviewWithKey}
                     source={webviewSource(helloConfigState)}
-                    webviewDebuggingEnabled={true}
-                    style={{ backgroundColor: 'red' }}
+                    style={styles.hiddenWebview}
                     onMessage={onMessage}
+                    collapsable={false}
                 />
             </View>
-            { popupWebviewState.mounted &&
-                <View
-                    style={{
-                        display: popupWebviewState.visible ? 'flex' : 'none',
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        bottom: popupWebviewState.visible ? 0 : undefined,
-                        left: popupWebviewState.visible ? 0 : undefined
-                    }}
-                >
-                    <WebView
-                        ref={popupWebviewRef}
-                        source={{ html: popupHtml(popupWebviewState?.htmlContent) }}
-                        onMessage={onMessage}
-                        containerStyle={styles.webviewContainerStyle}
-                        style={styles.webviewStyle}
-                        scalesPageToFit={false}
-                        scrollEnabled={false}
-                        bounces={false}
-                        overScrollMode='never'
-                        onShouldStartLoadWithRequest={(request) => {
-                            if (request.url !== "https://control.msg91.com/app/assets/dummy-page/index.html") {
-                                Linking.openURL(request.url)
-                                return false
-                            }
-                            return true
-                        }}
-                    />
+            <Modal
+                visible={popupWebviewState.mounted && popupWebviewState.visible}
+                transparent
+                animationType="fade"
+                statusBarTranslucent
+                onRequestClose={() => setPopupWebviewState({ htmlContent: '', mounted: false, visible: false })}
+                pointerEvents="box-none"
+            >
+                <View style={styles.modalRoot} pointerEvents="box-none">
+                    {popupWebviewState.mounted && (
+                        <View style={styles.popupOverlay} pointerEvents="auto">
+                            <WebView
+                                ref={popupWebviewRef}
+                                source={{ html: popupHtml(popupWebviewState?.htmlContent) }}
+                                onMessage={onMessage}
+                                containerStyle={styles.webviewContainerStyle}
+                                style={styles.webviewStyle}
+                                scalesPageToFit={false}
+                                scrollEnabled={false}
+                                bounces={false}
+                                overScrollMode='never'
+                                onShouldStartLoadWithRequest={(request) => {
+                                    const isInternalLoad =
+                                        !request.url ||
+                                        request.url === 'about:blank' ||
+                                        request.url.startsWith('about:') ||
+                                        request.url.startsWith('data:') ||
+                                        request.url.includes('/app/assets/dummy-page/');
+
+                                    if (isInternalLoad) return true;
+
+                                    if (request.navigationType === 'click') {
+                                        Linking.openURL(request.url);
+                                        return false;
+                                    }
+                                    return true;
+                                }}
+                            />
+                        </View>
+                    )}
                 </View>
-            }
+            </Modal>
         </>
     )
 }
@@ -176,25 +182,34 @@ const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, 
 export default MSG91PushNotificationSDK
 
 const styles = StyleSheet.create({
+    modalRoot: {
+        flex: 1,
+    },
+    popupOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 99999,
+        elevation: 99999,
+        backgroundColor: 'transparent',
+    },
     webviewContainerStyle: {
         flex: 1,
         backgroundColor: 'transparent',
-        
     },
     webviewStyle: {
-        // backgroundColor: '#00000060'
         backgroundColor: 'transparent'
     },
+    hiddenWebview: {
+        width: 1,
+        height: 1,
+        opacity: 0,
+    },
     socketWebviewStyle: {
-        // backgroundColor: 'transparent',
-        display: 'none',
-        // position: 'absolute',
-        // top: 0,
-        // right: 0,
-        // bottom: 0,
-        // left: 0,
-        // backgroundColor: 'red'
-    }
+        position: 'absolute',
+        width: 1,
+        height: 1,
+        opacity: 0,
+        zIndex: -1,
+    },
 })
 
 MSG91PushNotificationSDK.handleFCMNotification = (htmlContentUrl) => {
