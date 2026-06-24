@@ -1,8 +1,8 @@
 {
     "name": "@msg91comm/react-native-push-notification-sdk",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "private": false,
-    "description": "Hello Push Notification SDK for react native application.",
+    "description": "MSG91 Push Notification SDK for react native application.",
     "main": "index.tsx",
     "author": "Walkover",
     "license": "ISC",
@@ -20,7 +20,9 @@
       "Push Notification",
       "React Native",
       "FCM Notifications",
-      "In App Notifications"
+      "In App Notifications",
+      "Android",
+      "iOS"
     ],
     "bugs": {
       "url": "https://github.com/Walkover-Web-Solution/MSG91-pushNotification_RN_SDK/issues"
