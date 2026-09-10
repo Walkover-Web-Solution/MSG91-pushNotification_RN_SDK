@@ -15,26 +15,37 @@ type MSG91PushNotificationSDKProps = React.FC<Props> & {
 let _registerFCM: any = null;
 let _getHtmlBodyFromUrl: any = null;
 
+const buildHelloConfig = (config: { [key in string]: any }, projectId?: string, accessToken?: string) => {
+    const nextConfig = { ...config };
+
+    Object.keys(nextConfig).forEach(key => {
+        if (!!!nextConfig[key]) {
+            delete nextConfig[key];
+        }
+    });
+
+    // In-app popups need project_id on init. access_token is only for FCM.
+    if (projectId) {
+        nextConfig.pushConfig = {
+            project_id: projectId,
+            access_token: accessToken || undefined,
+        };
+    }
+
+    return nextConfig;
+};
+
 const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, projectId }) => {
     const popupWebviewRef = createRef<WebView>();
-    const [helloConfigState, setHelloConfigState] = useState(helloConfig);
+    const [helloConfigState, setHelloConfigState] = useState(() => buildHelloConfig(helloConfig, projectId));
     const [popupWebviewState, setPopupWebviewState] = useState({ htmlContent: '', mounted: false, visible: false });
     const [reloadWebviewWithKey, setReloadWebviewWithKey] = useState('webview-key-1');
 
     useEffect(() => {
-        let _helloConfig = { ...helloConfig };
-        let isKeyWithEmptyValuePresent = false;
-
-        Object.keys(_helloConfig).forEach(key => {
-            if (!!!_helloConfig[key]) {
-                isKeyWithEmptyValuePresent = true;
-                delete _helloConfig[key];
-            }
-        });
-        if (isKeyWithEmptyValuePresent) {
-            setHelloConfigState(_helloConfig);
-        }
-    }, [helloConfig])
+        setHelloConfigState(prevHelloConfigState =>
+            buildHelloConfig(helloConfig, projectId, prevHelloConfigState?.pushConfig?.access_token)
+        );
+    }, [helloConfig, projectId])
 
     useEffect(() => {
         LOG('Reloading Webview', helloConfigState);
@@ -90,17 +101,12 @@ const MSG91PushNotificationSDK: MSG91PushNotificationSDKProps = ({ helloConfig, 
     }, [])
 
     _registerFCM = (fcm: string) => {
-        if (!!fcm && projectId) {
-            setHelloConfigState((prevHelloConfigState) => {
-                return {
-                    ...prevHelloConfigState,
-                    pushConfig: {
-                        project_id: projectId,
-                        access_token: fcm
-                   }
-                }
-            })
+        if (!projectId) {
+            return;
         }
+        setHelloConfigState((prevHelloConfigState) =>
+            buildHelloConfig(prevHelloConfigState, projectId, fcm || undefined)
+        );
     };
 
     _getHtmlBodyFromUrl = useCallback(async (url: string) => {

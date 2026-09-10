@@ -1,6 +1,6 @@
 {
     "name": "@msg91comm/react-native-push-notification-sdk",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "private": false,
     "description": "Hello Push Notification SDK for react native application.",
     "main": "index.tsx",
